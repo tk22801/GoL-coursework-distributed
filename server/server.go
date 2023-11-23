@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
 	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
+	"uk.ac.bris.cs/gameoflife/util"
 )
 
 func makeWorld(height int, width int) [][]byte {
@@ -66,9 +68,6 @@ func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int
 			} else {
 				newWorld[x][y] = 0
 			}
-			//if p.Turns == 1 {
-			//fmt.Println(x, y, newWorld[x][y])
-			//}
 		}
 	}
 	out <- world
@@ -76,8 +75,9 @@ func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int
 
 type GameOfLife struct{}
 
-func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
+func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) {
 	world := req.World
+	fmt.Println("Print")
 	for turn := 0; turn < req.Turn; turn++ {
 		out := make(chan [][]byte)
 		worker(world, out, req.ImageHeight, req.ImageWidth)
@@ -87,6 +87,17 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 		world = newWorld
 	}
 	res.World = world
+	aliveCells := []util.Cell{}
+	for i := 0; i < req.ImageHeight; i++ {
+		for j := 0; j < req.ImageWidth; j++ {
+			if world[i][j] == 255 {
+				newCell := []util.Cell{{j, i}}
+				aliveCells = append(aliveCells, newCell...)
+			}
+		}
+	}
+	res.AliveCells = aliveCells
+
 	//c.events <- TurnComplete{Turn}
 	return
 }

@@ -29,16 +29,16 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 	response := new(stubs.Response)
 	client.Call(stubs.GoLWorker, request, response)
 	fmt.Println(response.World)
-	aliveCells := []util.Cell{}
+	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: response.AliveCells}
+	c.ioCommand <- ioOutput
+	filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
+	c.ioFilename <- filename
 	for i := 0; i < height; i++ {
 		for j := 0; j < width; j++ {
-			if response.World[i][j] == 255 {
-				newCell := []util.Cell{{j, i}}
-				aliveCells = append(aliveCells, newCell...)
-			}
+			c.ioOutput <- world[i][j]
 		}
 	}
-	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: aliveCells}
+	c.events <- ImageOutputComplete{turn, filename}
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
@@ -49,7 +49,6 @@ func distributor(p Params, c distributorChannels) {
 	server := flag.String("server", "127.0.0.1:8030", "IP:port string to connect to as server")
 	flag.Parse()
 	client, _ := rpc.Dial("tcp", *server)
-	defer client.Close()
 	turn := 0
 	//newWorld := makeWorld(0, 0)
 	world := makeWorld(p.ImageHeight, p.ImageWidth)
@@ -63,9 +62,10 @@ func distributor(p Params, c distributorChannels) {
 		}
 	}
 	// TODO: Execute all turns of the Game of Life.
+	fmt.Println("Called")
 	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c)
 	// TODO: Report the final state using FinalTurnCompleteEvent.
-
+	defer client.Close()
 	//fmt.Println(aliveCells)
 	c.ioCommand <- ioOutput
 	filename = fmt.Sprintf("%dx%dx%d", p.ImageWidth, p.ImageHeight, turn)
