@@ -1,8 +1,10 @@
 package gol
 
 import (
+	"flag"
 	"fmt"
 	"net/rpc"
+	"uk.ac.bris.cs/gameoflife/stubs"
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
@@ -22,11 +24,21 @@ func makeWorld(height, width int) [][]byte {
 	}
 	return world
 }
-func makeCall(client *rpc.Client, message string) {
-	request := stubs.Request{Message: message}
+func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels) {
+	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width}
 	response := new(stubs.Response)
-	client.Call(stubs.ReverseHandler, request, response)
-	fmt.Println("Responded: " + response.Message)
+	client.Call(stubs.GoLWorker, request, response)
+	fmt.Println(response.World)
+	aliveCells := []util.Cell{}
+	for i := 0; i < height; i++ {
+		for j := 0; j < width; j++ {
+			if response.World[i][j] == 255 {
+				newCell := []util.Cell{{j, i}}
+				aliveCells = append(aliveCells, newCell...)
+			}
+		}
+	}
+	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: aliveCells}
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
@@ -34,8 +46,10 @@ func distributor(p Params, c distributorChannels) {
 	filename := fmt.Sprintf("%dx%d", p.ImageWidth, p.ImageHeight)
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
-	//Events := make(chan Event)
-	//Run(p, c.events, keyPresses)
+	server := flag.String("server", "127.0.0.1:8030", "IP:port string to connect to as server")
+	flag.Parse()
+	client, _ := rpc.Dial("tcp", *server)
+	defer client.Close()
 	turn := 0
 	//newWorld := makeWorld(0, 0)
 	world := makeWorld(p.ImageHeight, p.ImageWidth)
@@ -49,22 +63,10 @@ func distributor(p Params, c distributorChannels) {
 		}
 	}
 	// TODO: Execute all turns of the Game of Life.
-
+	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c)
 	// TODO: Report the final state using FinalTurnCompleteEvent.
 
-	aliveCells := []util.Cell{}
-	for i := 0; i < p.ImageHeight; i++ {
-		for j := 0; j < p.ImageWidth; j++ {
-			if world[i][j] == 255 {
-				newCell := []util.Cell{{j, i}}
-				aliveCells = append(aliveCells, newCell...)
-			}
-		}
-	}
 	//fmt.Println(aliveCells)
-	c.events <- FinalTurnComplete{
-		CompletedTurns: turn, Alive: aliveCells,
-	}
 	c.ioCommand <- ioOutput
 	filename = fmt.Sprintf("%dx%dx%d", p.ImageWidth, p.ImageHeight, turn)
 	c.ioFilename <- filename
