@@ -75,10 +75,11 @@ func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int
 
 type GameOfLife struct{}
 
-func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) {
+func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 	world := req.World
 	fmt.Println("Print")
 	for turn := 0; turn < req.Turn; turn++ {
+		fmt.Println("Print")
 		out := make(chan [][]byte)
 		worker(world, out, req.ImageHeight, req.ImageWidth)
 		newWorld := makeWorld(0, 0) // Rebuilds world from sections
@@ -97,7 +98,6 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) {
 		}
 	}
 	res.AliveCells = aliveCells
-
 	//c.events <- TurnComplete{Turn}
 	return
 }

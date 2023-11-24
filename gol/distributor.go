@@ -28,7 +28,7 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width}
 	response := new(stubs.Response)
 	client.Call(stubs.GoLWorker, request, response)
-	fmt.Println(response.World)
+	fmt.Println(response.AliveCells)
 	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: response.AliveCells}
 	c.ioCommand <- ioOutput
 	filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
@@ -43,12 +43,17 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
+	fmt.Println("Print 1")
 	filename := fmt.Sprintf("%dx%d", p.ImageWidth, p.ImageHeight)
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
+	fmt.Println("Print 2")
 	server := flag.String("server", "127.0.0.1:8030", "IP:port string to connect to as server")
 	flag.Parse()
+	fmt.Println("Print 3")
 	client, _ := rpc.Dial("tcp", *server)
+	fmt.Println("Print 4")
+	defer client.Close()
 	turn := 0
 	//newWorld := makeWorld(0, 0)
 	world := makeWorld(p.ImageHeight, p.ImageWidth)
@@ -61,21 +66,17 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 	}
-	// TODO: Execute all turns of the Game of Life.
 	fmt.Println("Called")
 	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c)
-	// TODO: Report the final state using FinalTurnCompleteEvent.
-	defer client.Close()
-	//fmt.Println(aliveCells)
-	c.ioCommand <- ioOutput
-	filename = fmt.Sprintf("%dx%dx%d", p.ImageWidth, p.ImageHeight, turn)
-	c.ioFilename <- filename
-	for i := 0; i < p.ImageHeight; i++ {
-		for j := 0; j < p.ImageWidth; j++ {
-			c.ioOutput <- world[i][j]
-		}
-	}
-	c.events <- ImageOutputComplete{turn, filename}
+	//c.ioCommand <- ioOutput
+	//filename = fmt.Sprintf("%dx%dx%d", p.ImageWidth, p.ImageHeight, turn)
+	//c.ioFilename <- filename
+	//for i := 0; i < p.ImageHeight; i++ {
+	//	for j := 0; j < p.ImageWidth; j++ {
+	//		c.ioOutput <- world[i][j]
+	//	}
+	//}
+	//c.events <- ImageOutputComplete{turn, filename}
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
