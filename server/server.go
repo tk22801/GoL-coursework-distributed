@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"math/rand"
 	"net"
@@ -19,6 +18,7 @@ func makeWorld(height int, width int) [][]byte {
 	return world
 }
 func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int) {
+	print("worker")
 	newWorld := makeWorld(ImageHeight, ImageWidth)
 	for x := 0; x < ImageWidth; x++ {
 		for y := 0; y < ImageHeight; y++ {
@@ -70,18 +70,19 @@ func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int
 			}
 		}
 	}
-	out <- world
+	out <- newWorld
 }
 
 type GameOfLife struct{}
 
 func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 	world := req.World
-	fmt.Println("Print")
+	fmt.Println("Print 1")
 	for turn := 0; turn < req.Turn; turn++ {
-		fmt.Println("Print")
+		fmt.Println("Print 2")
 		out := make(chan [][]byte)
-		worker(world, out, req.ImageHeight, req.ImageWidth)
+		go worker(world, out, req.ImageHeight, req.ImageWidth)
+		fmt.Println("Print 3")
 		newWorld := makeWorld(0, 0) // Rebuilds world from sections
 		section := <-out
 		newWorld = append(newWorld, section...)
@@ -102,11 +103,12 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 	return
 }
 func main() {
-	pAddr := flag.String("port", "8030", "Port to listen on")
-	flag.Parse()
+	//pAddr := flag.String("port", "8030", "Port to listen on")
+	//flag.Parse()
+	pAddr := "8030"
 	rand.Seed(time.Now().UnixNano())
 	rpc.Register(&GameOfLife{})
-	listener, _ := net.Listen("tcp", ":"+*pAddr)
+	listener, _ := net.Listen("tcp", ":"+pAddr)
 	defer listener.Close()
 	rpc.Accept(listener)
 }

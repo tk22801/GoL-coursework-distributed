@@ -1,7 +1,6 @@
 package gol
 
 import (
-	"flag"
 	"fmt"
 	"net/rpc"
 	"uk.ac.bris.cs/gameoflife/stubs"
@@ -28,7 +27,7 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width}
 	response := new(stubs.Response)
 	client.Call(stubs.GoLWorker, request, response)
-	fmt.Println(response.AliveCells)
+	//fmt.Println(response.AliveCells)
 	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: response.AliveCells}
 	c.ioCommand <- ioOutput
 	filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
@@ -47,12 +46,8 @@ func distributor(p Params, c distributorChannels) {
 	filename := fmt.Sprintf("%dx%d", p.ImageWidth, p.ImageHeight)
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
-	fmt.Println("Print 2")
-	server := flag.String("server", "127.0.0.1:8030", "IP:port string to connect to as server")
-	flag.Parse()
-	fmt.Println("Print 3")
-	client, _ := rpc.Dial("tcp", *server)
-	fmt.Println("Print 4")
+	server := "127.0.0.1:8030"
+	client, _ := rpc.Dial("tcp", server)
 	defer client.Close()
 	turn := 0
 	//newWorld := makeWorld(0, 0)
@@ -68,16 +63,6 @@ func distributor(p Params, c distributorChannels) {
 	}
 	fmt.Println("Called")
 	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c)
-	//c.ioCommand <- ioOutput
-	//filename = fmt.Sprintf("%dx%dx%d", p.ImageWidth, p.ImageHeight, turn)
-	//c.ioFilename <- filename
-	//for i := 0; i < p.ImageHeight; i++ {
-	//	for j := 0; j < p.ImageWidth; j++ {
-	//		c.ioOutput <- world[i][j]
-	//	}
-	//}
-	//c.events <- ImageOutputComplete{turn, filename}
-
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle
