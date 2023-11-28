@@ -3,6 +3,7 @@ package gol
 import (
 	"fmt"
 	"net/rpc"
+	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
 	"uk.ac.bris.cs/gameoflife/util"
 )
@@ -23,9 +24,17 @@ func makeWorld(height, width int) [][]byte {
 	}
 	return world
 }
-func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels) {
-	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width}
+func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels, acrossW chan [][]byte, acrossT chan int) {
+	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width, AcrossWorld: acrossW, AcrossTurn: acrossT}
 	response := new(stubs.Response)
+	AliveCount := 0
+	for i := 0; i < height; i++ {
+		for j := 0; j < width; j++ {
+			if world[i][j] == 255 {
+				AliveCount += 1
+			}
+		}
+	}
 	client.Call(stubs.GoLWorker, request, response)
 	//fmt.Println(response.AliveCells)
 	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: response.AliveCells}
@@ -38,6 +47,24 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 		}
 	}
 	c.events <- ImageOutputComplete{turn, filename}
+}
+func makeAliveCall(client *rpc.Client, turn int, height int, width int, c distributorChannels, acrossW chan [][]byte, acrossT chan int) {
+	request := stubs.AliveRequest{Turn: turn, ImageHeight: height, ImageWidth: width, AcrossWorld: acrossW, AcrossTurn: acrossT}
+	response := new(stubs.AliveResponse)
+	client.Call(stubs.AliveWorker, request, response)
+
+	c.events <- AliveCellsCount{response.Turn, response.AliveCellsCount}
+
+	//fmt.Println(response.AliveCells)
+	//c.ioCommand <- ioOutput
+	//filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
+	//c.ioFilename <- filename
+	//for i := 0; i < height; i++ {
+	//	for j := 0; j < width; j++ {
+	//		c.ioOutput <- response.World[i][j]
+	//	}
+	//}
+	//c.events <- ImageOutputComplete{turn, filename}
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
@@ -61,14 +88,21 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 	}
+	acrossW := make(chan [][]byte)
+	acrossT := make(chan int)
 	fmt.Println("Called")
-	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c)
+	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, acrossW, acrossT)
+	ticker := time.NewTicker(2 * time.Second)
+	go func() {
+		for range ticker.C {
+			makeAliveCall(client, p.Turns, p.ImageHeight, p.ImageWidth, c, acrossW, acrossT)
+
+		}
+	}()
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle
-
 	c.events <- StateChange{turn, Quitting}
-
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
 }

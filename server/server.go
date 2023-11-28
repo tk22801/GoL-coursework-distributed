@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
@@ -75,18 +74,31 @@ func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int
 
 type GameOfLife struct{}
 
+func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (err error) {
+	print("alive")
+	world := <-req.AcrossWorld
+	print("alive 2")
+	turn := <-req.AcrossTurn
+	print("alive 3")
+	AliveCount := 0
+
+	res.AliveCellsCount = AliveCount
+	res.World = world
+	res.Turn = turn + 1
+	return
+}
+
 func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 	world := req.World
-	fmt.Println("Print 1")
 	for turn := 0; turn < req.Turn; turn++ {
-		fmt.Println("Print 2")
 		out := make(chan [][]byte)
 		go worker(world, out, req.ImageHeight, req.ImageWidth)
-		fmt.Println("Print 3")
 		newWorld := makeWorld(0, 0) // Rebuilds world from sections
 		section := <-out
 		newWorld = append(newWorld, section...)
 		world = newWorld
+		req.AcrossWorld <- world
+		req.AcrossTurn <- turn
 	}
 	res.World = world
 	aliveCells := []util.Cell{}
