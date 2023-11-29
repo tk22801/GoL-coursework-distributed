@@ -9,6 +9,9 @@ import (
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
+var BigWorld = makeWorld(0, 0)
+var BigTurn = 0
+
 func makeWorld(height int, width int) [][]byte {
 	world := make([][]byte, height)
 	for i := range world {
@@ -75,21 +78,26 @@ func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int
 type GameOfLife struct{}
 
 func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (err error) {
-	print("alive")
-	world := <-req.AcrossWorld
-	print("alive 2")
-	turn := <-req.AcrossTurn
-	print("alive 3")
-	AliveCount := 0
-
-	res.AliveCellsCount = AliveCount
-	res.World = world
+	aliveCount := 0
+	world := BigWorld
+	turn := BigTurn
+	for i := 0; i < req.ImageHeight; i++ {
+		for j := 0; j < req.ImageWidth; j++ {
+			if world[i][j] == 255 {
+				aliveCount += 1
+			}
+		}
+	}
 	res.Turn = turn + 1
+	res.World = world
+	res.AliveCellsCount = aliveCount
 	return
 }
 
 func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
+	BigWorld = req.World
 	world := req.World
+	BigTurn = 0
 	for turn := 0; turn < req.Turn; turn++ {
 		out := make(chan [][]byte)
 		go worker(world, out, req.ImageHeight, req.ImageWidth)
@@ -97,8 +105,8 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 		section := <-out
 		newWorld = append(newWorld, section...)
 		world = newWorld
-		req.AcrossWorld <- world
-		req.AcrossTurn <- turn
+		BigWorld = world
+		BigTurn += 1
 	}
 	res.World = world
 	aliveCells := []util.Cell{}
@@ -111,6 +119,7 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 		}
 	}
 	res.AliveCells = aliveCells
+
 	//c.events <- TurnComplete{Turn}
 	return
 }
@@ -118,9 +127,13 @@ func main() {
 	//pAddr := flag.String("port", "8030", "Port to listen on")
 	//flag.Parse()
 	pAddr := "8030"
+	pAddr2 := "8031"
 	rand.Seed(time.Now().UnixNano())
 	rpc.Register(&GameOfLife{})
 	listener, _ := net.Listen("tcp", ":"+pAddr)
 	defer listener.Close()
 	rpc.Accept(listener)
+	listener2, _ := net.Listen("tcp", ":"+pAddr2)
+	defer listener2.Close()
+	rpc.Accept(listener2)
 }

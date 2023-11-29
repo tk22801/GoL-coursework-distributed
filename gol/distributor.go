@@ -24,8 +24,8 @@ func makeWorld(height, width int) [][]byte {
 	}
 	return world
 }
-func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels, acrossW chan [][]byte, acrossT chan int) {
-	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width, AcrossWorld: acrossW, AcrossTurn: acrossT}
+func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels, ticker *time.Ticker) {
+	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width}
 	response := new(stubs.Response)
 	AliveCount := 0
 	for i := 0; i < height; i++ {
@@ -37,6 +37,7 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 	}
 	client.Call(stubs.GoLWorker, request, response)
 	//fmt.Println(response.AliveCells)
+	ticker.Stop()
 	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: response.AliveCells}
 	c.ioCommand <- ioOutput
 	filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
@@ -48,11 +49,12 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 	}
 	c.events <- ImageOutputComplete{turn, filename}
 }
-func makeAliveCall(client *rpc.Client, turn int, height int, width int, c distributorChannels, acrossW chan [][]byte, acrossT chan int) {
-	request := stubs.AliveRequest{Turn: turn, ImageHeight: height, ImageWidth: width, AcrossWorld: acrossW, AcrossTurn: acrossT}
+func makeAliveCall(height int, width int, c distributorChannels) {
+	server := "127.0.0.1:8031"
+	client, _ := rpc.Dial("tcp", server)
+	request := stubs.AliveRequest{ImageHeight: height, ImageWidth: width}
 	response := new(stubs.AliveResponse)
 	client.Call(stubs.AliveWorker, request, response)
-
 	c.events <- AliveCellsCount{response.Turn, response.AliveCellsCount}
 
 	//fmt.Println(response.AliveCells)
@@ -69,7 +71,6 @@ func makeAliveCall(client *rpc.Client, turn int, height int, width int, c distri
 
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
-	fmt.Println("Print 1")
 	filename := fmt.Sprintf("%dx%d", p.ImageWidth, p.ImageHeight)
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
@@ -88,15 +89,12 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 	}
-	acrossW := make(chan [][]byte)
-	acrossT := make(chan int)
 	fmt.Println("Called")
-	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, acrossW, acrossT)
 	ticker := time.NewTicker(2 * time.Second)
+	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
 	go func() {
 		for range ticker.C {
-			makeAliveCall(client, p.Turns, p.ImageHeight, p.ImageWidth, c, acrossW, acrossT)
-
+			makeAliveCall(p.ImageHeight, p.ImageWidth, c)
 		}
 	}()
 	// Make sure that the Io has finished any output before exiting.

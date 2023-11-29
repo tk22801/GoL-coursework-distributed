@@ -14,16 +14,11 @@ type Response struct {
 
 type Request struct {
 	World       [][]byte
-	AcrossWorld chan [][]byte
-	AcrossTurn  chan int
 	Turn        int
 	ImageHeight int
 	ImageWidth  int
 }
 type AliveRequest struct {
-	AcrossWorld chan [][]byte
-	AcrossTurn  chan int
-	Turn        int
 	ImageHeight int
 	ImageWidth  int
 }
