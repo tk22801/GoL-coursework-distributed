@@ -11,6 +11,8 @@ import (
 
 var BigWorld = makeWorld(0, 0)
 var BigTurn = 0
+var Pause = "Continue"
+var Quit = "No"
 
 func makeWorld(height int, width int) [][]byte {
 	world := make([][]byte, height)
@@ -79,6 +81,11 @@ type GameOfLife struct{}
 
 func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (err error) {
 	//fmt.Println("Test 1")
+	if Pause == "Pause" {
+		for Pause == "Pause" {
+			time.Sleep(1 * time.Second)
+		}
+	}
 	aliveCount := 0
 	world := BigWorld
 	turn := BigTurn
@@ -95,10 +102,35 @@ func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (er
 	//fmt.Println("Test 2")
 	return
 }
+
 func (s *GameOfLife) Key(req stubs.KeyRequest, res *stubs.KeyResponse) (err error) {
 	//fmt.Println("Test 1")
 	world := BigWorld
 	turn := BigTurn
+	//if req.Key == 's' {
+	//	res.World = world
+	//	res.Turn = turn
+	//}
+	if req.Key == 'p' {
+		if Pause == "Continue" {
+			Pause = "Pause"
+		} else {
+			if Pause == "Pause" {
+				Pause = "Continue"
+			}
+		}
+		res.Pause = Pause
+	}
+	if req.Key == 'k' {
+		Quit = "Yes"
+		res.Pause = "Quit"
+	}
+	if req.Key == 'k' {
+		Quit = "Yes"
+		res.Pause = "Quit"
+		BigWorld = makeWorld(0, 0)
+		BigTurn = 0
+	}
 	res.Turn = turn
 	res.World = world
 	//fmt.Println("Test 2")
@@ -106,10 +138,31 @@ func (s *GameOfLife) Key(req stubs.KeyRequest, res *stubs.KeyResponse) (err erro
 }
 
 func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
+	Pause = "Continue"
+	Quit = "No"
 	BigWorld = req.World
 	world := req.World
 	BigTurn = 1
+	aliveCells := []util.Cell{}
 	for turn := 0; turn < req.Turn; turn++ {
+		if Pause == "Pause" {
+			for Pause == "Pause" {
+				time.Sleep(1 * time.Second)
+			}
+		}
+		if Quit == "Yes" {
+			res.World = BigWorld
+			for i := 0; i < req.ImageHeight; i++ {
+				for j := 0; j < req.ImageWidth; j++ {
+					if BigWorld[i][j] == 255 {
+						newCell := []util.Cell{{j, i}}
+						aliveCells = append(aliveCells, newCell...)
+					}
+				}
+			}
+			res.AliveCells = aliveCells
+			return
+		}
 		BigTurn = turn
 		out := make(chan [][]byte)
 		go worker(world, out, req.ImageHeight, req.ImageWidth)
@@ -120,7 +173,6 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 		BigWorld = world
 	}
 	res.World = BigWorld
-	aliveCells := []util.Cell{}
 	for i := 0; i < req.ImageHeight; i++ {
 		for j := 0; j < req.ImageWidth; j++ {
 			if BigWorld[i][j] == 255 {

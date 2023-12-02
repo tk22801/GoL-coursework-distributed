@@ -60,7 +60,6 @@ func makeAliveCall(client *rpc.Client, height int, width int, c distributorChann
 	client.Call(stubs.AliveWorker, request, response)
 	//fmt.Println("test 3")
 	c.events <- AliveCellsCount{response.Turn, response.AliveCellsCount}
-
 	//fmt.Println("Alive cells: ", response.AliveCellsCount)
 	//c.ioCommand <- ioOutput
 	//filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
@@ -71,6 +70,40 @@ func makeAliveCall(client *rpc.Client, height int, width int, c distributorChann
 	//	}
 	//}
 	//c.events <- ImageOutputComplete{turn, filename}
+}
+func makeKeyCall(client *rpc.Client, key rune, height int, width int, c distributorChannels) {
+	request := stubs.KeyRequest{Key: key}
+	response := new(stubs.KeyResponse)
+	client.Call(stubs.KeyPresses, request, response)
+	if key == 's' || key == 'k' {
+		c.ioCommand <- ioOutput
+		filename := fmt.Sprintf("%dx%dx%d", width, height, response.Turn)
+		c.ioFilename <- filename
+		for i := 0; i < height; i++ {
+			for j := 0; j < width; j++ {
+				c.ioOutput <- response.World[i][j]
+			}
+		}
+		c.events <- ImageOutputComplete{response.Turn, filename}
+	}
+	if key == 'p' {
+		if response.Pause == "Pause" {
+			c.events <- StateChange{response.Turn, Paused}
+			fmt.Println("Paused at turn ", response.Turn)
+		}
+		if response.Pause == "Continue" {
+			c.events <- StateChange{response.Turn, Executing}
+			fmt.Println("Continuing")
+		}
+	}
+	if key == 'k' {
+		// Make sure that the Io has finished any output before exiting.
+		c.ioCommand <- ioCheckIdle
+		<-c.ioIdle
+		c.events <- StateChange{response.Turn, Quitting}
+		// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
+		close(c.events)
+	}
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
@@ -99,6 +132,14 @@ func distributor(p Params, c distributorChannels) {
 	go func() {
 		for range ticker.C {
 			makeAliveCall(client, p.ImageHeight, p.ImageWidth, c)
+		}
+	}()
+	go func() {
+		for {
+			key := <-c.keyPresses
+			if key == 's' || key == 'q' || key == 'k' || key == 'p' {
+				makeKeyCall(client, key, p.ImageHeight, p.ImageWidth, c)
+			}
 		}
 	}()
 	//makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)

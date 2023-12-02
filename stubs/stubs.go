@@ -29,9 +29,11 @@ type AliveResponse struct {
 	AliveCellsCount int
 }
 type KeyRequest struct {
+	Key rune
 }
 
 type KeyResponse struct {
 	World [][]byte
 	Turn  int
+	Pause string
 }
