@@ -6,6 +6,7 @@ import (
 
 var GoLWorker = "GameOfLife.GoL"
 var AliveWorker = "GameOfLife.Alive"
+var KeyPresses = "GameOfLife.Key"
 
 type Response struct {
 	World      [][]byte
@@ -26,4 +27,11 @@ type AliveResponse struct {
 	World           [][]byte
 	Turn            int
 	AliveCellsCount int
+}
+type KeyRequest struct {
+}
+
+type KeyResponse struct {
+	World [][]byte
+	Turn  int
 }

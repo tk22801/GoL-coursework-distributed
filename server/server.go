@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
@@ -79,7 +78,7 @@ func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int
 type GameOfLife struct{}
 
 func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (err error) {
-	fmt.Println("Test 1")
+	//fmt.Println("Test 1")
 	aliveCount := 0
 	world := BigWorld
 	turn := BigTurn
@@ -90,18 +89,28 @@ func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (er
 			}
 		}
 	}
-	res.Turn = turn + 1
+	res.Turn = turn
 	res.World = world
 	res.AliveCellsCount = aliveCount
-	fmt.Println("Test 2")
+	//fmt.Println("Test 2")
+	return
+}
+func (s *GameOfLife) Key(req stubs.KeyRequest, res *stubs.KeyResponse) (err error) {
+	//fmt.Println("Test 1")
+	world := BigWorld
+	turn := BigTurn
+	res.Turn = turn
+	res.World = world
+	//fmt.Println("Test 2")
 	return
 }
 
 func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 	BigWorld = req.World
 	world := req.World
-	BigTurn = 0
+	BigTurn = 1
 	for turn := 0; turn < req.Turn; turn++ {
+		BigTurn = turn
 		out := make(chan [][]byte)
 		go worker(world, out, req.ImageHeight, req.ImageWidth)
 		newWorld := makeWorld(0, 0) // Rebuilds world from sections
@@ -109,13 +118,12 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 		newWorld = append(newWorld, section...)
 		world = newWorld
 		BigWorld = world
-		BigTurn += 1
 	}
-	res.World = world
+	res.World = BigWorld
 	aliveCells := []util.Cell{}
 	for i := 0; i < req.ImageHeight; i++ {
 		for j := 0; j < req.ImageWidth; j++ {
-			if world[i][j] == 255 {
+			if BigWorld[i][j] == 255 {
 				newCell := []util.Cell{{j, i}}
 				aliveCells = append(aliveCells, newCell...)
 			}
@@ -130,14 +138,14 @@ func main() {
 	//pAddr := flag.String("port", "8030", "Port to listen on")
 	//flag.Parse()
 	pAddr := "8030"
-	pAddr2 := "8031"
+	//pAddr2 := "8031"
 	rand.Seed(time.Now().UnixNano())
 	rpc.Register(&GameOfLife{})
 	listener, _ := net.Listen("tcp", ":"+pAddr)
-	fmt.Println("Test 4")
+	//fmt.Println("Test 4")
 	defer listener.Close()
 	rpc.Accept(listener)
-	listener2, _ := net.Listen("tcp", ":"+pAddr2)
-	defer listener2.Close()
-	rpc.Accept(listener2)
+	//listener2, _ := net.Listen("tcp", ":"+pAddr2)
+	//defer listener2.Close()
+	//rpc.Accept(listener2)
 }

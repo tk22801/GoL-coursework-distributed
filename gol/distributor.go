@@ -15,6 +15,7 @@ type distributorChannels struct {
 	ioFilename chan<- string
 	ioOutput   chan<- uint8
 	ioInput    <-chan uint8
+	keyPresses <-chan rune
 }
 
 func makeWorld(height, width int) [][]byte {
@@ -37,7 +38,7 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 	}
 	client.Call(stubs.GoLWorker, request, response)
 	//fmt.Println(response.AliveCells)
-	ticker.Stop()
+	//ticker.Stop()
 	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: response.AliveCells}
 	c.ioCommand <- ioOutput
 	filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
@@ -60,7 +61,7 @@ func makeAliveCall(client *rpc.Client, height int, width int, c distributorChann
 	//fmt.Println("test 3")
 	c.events <- AliveCellsCount{response.Turn, response.AliveCellsCount}
 
-	fmt.Println("Alive cells: ", response.AliveCellsCount)
+	//fmt.Println("Alive cells: ", response.AliveCellsCount)
 	//c.ioCommand <- ioOutput
 	//filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
 	//c.ioFilename <- filename
@@ -95,13 +96,14 @@ func distributor(p Params, c distributorChannels) {
 	}
 	fmt.Println("Called")
 	ticker := time.NewTicker(2 * time.Second)
-	//makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
 	go func() {
 		for range ticker.C {
 			makeAliveCall(client, p.ImageHeight, p.ImageWidth, c)
 		}
 	}()
+	//makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
 	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
+	ticker.Stop()
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle
