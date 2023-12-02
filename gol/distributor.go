@@ -49,15 +49,18 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 	}
 	c.events <- ImageOutputComplete{turn, filename}
 }
-func makeAliveCall(height int, width int, c distributorChannels) {
-	server := "127.0.0.1:8031"
-	client, _ := rpc.Dial("tcp", server)
+func makeAliveCall(client *rpc.Client, height int, width int, c distributorChannels) {
+	//server := "127.0.0.1:8031"
+	//server := "3.90.140.42:8031"
+	//client, _ := rpc.Dial("tcp", server)
 	request := stubs.AliveRequest{ImageHeight: height, ImageWidth: width}
 	response := new(stubs.AliveResponse)
+	//fmt.Println("test 2")
 	client.Call(stubs.AliveWorker, request, response)
+	//fmt.Println("test 3")
 	c.events <- AliveCellsCount{response.Turn, response.AliveCellsCount}
 
-	//fmt.Println(response.AliveCells)
+	fmt.Println("Alive cells: ", response.AliveCellsCount)
 	//c.ioCommand <- ioOutput
 	//filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
 	//c.ioFilename <- filename
@@ -75,6 +78,7 @@ func distributor(p Params, c distributorChannels) {
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
 	server := "127.0.0.1:8030"
+	//server := "3.90.140.42:8030"
 	client, _ := rpc.Dial("tcp", server)
 	defer client.Close()
 	turn := 0
@@ -91,12 +95,13 @@ func distributor(p Params, c distributorChannels) {
 	}
 	fmt.Println("Called")
 	ticker := time.NewTicker(2 * time.Second)
-	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
+	//makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
 	go func() {
 		for range ticker.C {
-			makeAliveCall(p.ImageHeight, p.ImageWidth, c)
+			makeAliveCall(client, p.ImageHeight, p.ImageWidth, c)
 		}
 	}()
+	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle

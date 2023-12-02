@@ -5,7 +5,7 @@ import (
 )
 
 var GoLWorker = "GameOfLife.GoL"
-var AliveWorker = "GameofLife.Alive"
+var AliveWorker = "GameOfLife.Alive"
 
 type Response struct {
 	World      [][]byte

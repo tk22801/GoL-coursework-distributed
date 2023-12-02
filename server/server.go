@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
@@ -20,7 +21,7 @@ func makeWorld(height int, width int) [][]byte {
 	return world
 }
 func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int) {
-	print("worker")
+	//print("worker")
 	newWorld := makeWorld(ImageHeight, ImageWidth)
 	for x := 0; x < ImageWidth; x++ {
 		for y := 0; y < ImageHeight; y++ {
@@ -78,6 +79,7 @@ func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int
 type GameOfLife struct{}
 
 func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (err error) {
+	fmt.Println("Test 1")
 	aliveCount := 0
 	world := BigWorld
 	turn := BigTurn
@@ -91,6 +93,7 @@ func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (er
 	res.Turn = turn + 1
 	res.World = world
 	res.AliveCellsCount = aliveCount
+	fmt.Println("Test 2")
 	return
 }
 
@@ -131,6 +134,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	rpc.Register(&GameOfLife{})
 	listener, _ := net.Listen("tcp", ":"+pAddr)
+	fmt.Println("Test 4")
 	defer listener.Close()
 	rpc.Accept(listener)
 	listener2, _ := net.Listen("tcp", ":"+pAddr2)
