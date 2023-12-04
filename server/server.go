@@ -142,7 +142,7 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 	Quit = "No"
 	BigWorld = req.World
 	world := req.World
-	BigTurn = 1
+	BigTurn = 0
 	aliveCells := []util.Cell{}
 	for turn := 0; turn < req.Turn; turn++ {
 		if Pause == "Pause" {

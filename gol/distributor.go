@@ -96,7 +96,7 @@ func makeKeyCall(client *rpc.Client, key rune, height int, width int, c distribu
 			fmt.Println("Continuing")
 		}
 	}
-	if key == 'k' {
+	if key == 'q' {
 		// Make sure that the Io has finished any output before exiting.
 		c.ioCommand <- ioCheckIdle
 		<-c.ioIdle
