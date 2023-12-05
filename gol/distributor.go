@@ -25,7 +25,7 @@ func makeWorld(height, width int) [][]byte {
 	}
 	return world
 }
-func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels, ticker *time.Ticker) {
+func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels) {
 	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width}
 	response := new(stubs.Response)
 	AliveCount := 0
@@ -36,7 +36,10 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 			}
 		}
 	}
-	client.Call(stubs.GoLWorker, request, response)
+	err := client.Call(stubs.GoLWorker, request, response)
+	if err != nil {
+		return
+	}
 	//fmt.Println(response.AliveCells)
 	//ticker.Stop()
 	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: response.AliveCells}
@@ -57,7 +60,10 @@ func makeAliveCall(client *rpc.Client, height int, width int, c distributorChann
 	request := stubs.AliveRequest{ImageHeight: height, ImageWidth: width}
 	response := new(stubs.AliveResponse)
 	//fmt.Println("test 2")
-	client.Call(stubs.AliveWorker, request, response)
+	err := client.Call(stubs.AliveWorker, request, response)
+	if err != nil {
+		return
+	}
 	//fmt.Println("test 3")
 	c.events <- AliveCellsCount{response.Turn, response.AliveCellsCount}
 	//fmt.Println("Alive cells: ", response.AliveCellsCount)
@@ -74,7 +80,10 @@ func makeAliveCall(client *rpc.Client, height int, width int, c distributorChann
 func makeKeyCall(client *rpc.Client, key rune, height int, width int, c distributorChannels) {
 	request := stubs.KeyRequest{Key: key}
 	response := new(stubs.KeyResponse)
-	client.Call(stubs.KeyPresses, request, response)
+	err := client.Call(stubs.KeyPresses, request, response)
+	if err != nil {
+		return
+	}
 	if key == 's' || key == 'k' {
 		c.ioCommand <- ioOutput
 		filename := fmt.Sprintf("%dx%dx%d", width, height, response.Turn)
@@ -114,7 +123,12 @@ func distributor(p Params, c distributorChannels) {
 	server := "127.0.0.1:8030"
 	//server := "3.90.140.42:8030"
 	client, _ := rpc.Dial("tcp", server)
-	defer client.Close()
+	defer func(client *rpc.Client) {
+		err := client.Close()
+		if err != nil {
+
+		}
+	}(client)
 	turn := 0
 	//newWorld := makeWorld(0, 0)
 	world := makeWorld(p.ImageHeight, p.ImageWidth)
@@ -123,7 +137,7 @@ func distributor(p Params, c distributorChannels) {
 			val := <-c.ioInput
 			world[x][y] = val
 			if val == 255 {
-				c.events <- CellFlipped{turn, util.Cell{x, y}}
+				c.events <- CellFlipped{CompletedTurns: turn, Cell: util.Cell{x, y}}
 			}
 		}
 	}

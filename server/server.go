@@ -121,7 +121,7 @@ func (s *GameOfLife) Key(req stubs.KeyRequest, res *stubs.KeyResponse) (err erro
 		}
 		res.Pause = Pause
 	}
-	if req.Key == 'k' {
+	if req.Key == 'q' {
 		Quit = "Yes"
 		res.Pause = "Quit"
 	}
@@ -165,8 +165,12 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 		}
 		BigTurn = turn
 		out := make(chan [][]byte)
+		//request := stubs.WorkerRequest{World: world, ImageHeight: req.ImageHeight, ImageWidth: req.ImageWidth}
+		//response := new(stubs.WorkerResponse)
+		//client.Call(stubs.Worker, request, response)
 		go worker(world, out, req.ImageHeight, req.ImageWidth)
 		newWorld := makeWorld(0, 0) // Rebuilds world from sections
+		//world = response.World
 		section := <-out
 		newWorld = append(newWorld, section...)
 		world = newWorld
@@ -192,10 +196,17 @@ func main() {
 	pAddr := "8030"
 	//pAddr2 := "8031"
 	rand.Seed(time.Now().UnixNano())
-	rpc.Register(&GameOfLife{})
+	err := rpc.Register(&GameOfLife{})
+	if err != nil {
+		return
+	}
 	listener, _ := net.Listen("tcp", ":"+pAddr)
-	//fmt.Println("Test 4")
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+
+		}
+	}(listener)
 	rpc.Accept(listener)
 	//listener2, _ := net.Listen("tcp", ":"+pAddr2)
 	//defer listener2.Close()
