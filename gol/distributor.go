@@ -100,14 +100,18 @@ func makeKeyCall(client *rpc.Client, key rune, height int, width int, c distribu
 
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
+	//requests file with filename from the input
 	filename := fmt.Sprintf("%dx%d", p.ImageWidth, p.ImageHeight)
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
-	//requests file with filename from the input
-	//server := "127.0.0.1:8030"
+	//asks the user for the Ip Address and gate of the AWS instance since the IP address changes when the instance is restarted
+	workerServer := ""
+	fmt.Println("Ip address of AWS Node and gate(IpAddress:gate):")
+	fmt.Scan(&workerServer)
+	server := "127.0.0.1:8030"
 	//workerServer := "127.0.0.1:8040"
-	server := "3.90.140.42:8030"
-	workerServer := "3.90.140.42:8040"
+	//server := "3.85.6.20:8030"
+	//workerServer := "3.85.6.20:8040"
 	client, _ := rpc.Dial("tcp", server)
 	defer func(client *rpc.Client) {
 		err := client.Close()
