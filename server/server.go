@@ -99,7 +99,6 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 		}
 		if Quit == "Yes" {
 			res.World = BigWorld
-			fmt.Println("Quit")
 			for i := 0; i < req.ImageHeight; i++ {
 				for j := 0; j < req.ImageWidth; j++ {
 					if BigWorld[i][j] == 255 {
@@ -108,7 +107,6 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 					}
 				}
 			}
-			fmt.Println("Quit 2")
 			res.AliveCells = aliveCells
 			res.Turn = turn
 			return

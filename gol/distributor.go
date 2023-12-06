@@ -104,9 +104,10 @@ func distributor(p Params, c distributorChannels) {
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
 	//requests file with filename from the input
-	server := "127.0.0.1:8030"
-	workerServer := "127.0.0.1:8040"
-	//workerServer := "3.90.140.42:8030"
+	//server := "127.0.0.1:8030"
+	//workerServer := "127.0.0.1:8040"
+	server := "3.90.140.42:8030"
+	workerServer := "3.90.140.42:8040"
 	client, _ := rpc.Dial("tcp", server)
 	defer func(client *rpc.Client) {
 		err := client.Close()
@@ -126,7 +127,6 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 	}
-	fmt.Println("Called")
 	ticker := time.NewTicker(2 * time.Second)
 	//Every 2 seconds it starts the makeAliveCall
 	go func() {
