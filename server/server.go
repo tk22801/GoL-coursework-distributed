@@ -24,61 +24,6 @@ func makeWorld(height int, width int) [][]byte {
 	}
 	return world
 }
-func worker(world [][]byte, out chan<- [][]byte, ImageHeight int, ImageWidth int) [][]byte {
-	//print("worker")
-	newWorld := makeWorld(ImageHeight, ImageWidth)
-	for x := 0; x < ImageWidth; x++ {
-		for y := 0; y < ImageHeight; y++ {
-			numNeighbours := 0
-			xBack := x - 1
-			xForward := x + 1
-			yUp := y - 1
-			yDown := y + 1
-			if x == 0 {
-				xBack = ImageWidth - 1
-			}
-			if x == ImageWidth-1 {
-				xForward = 0
-			}
-			if y == 0 {
-				yUp = ImageHeight - 1
-			}
-			if y == ImageHeight-1 {
-				yDown = 0
-			}
-			if world[xBack][y] == 255 { //Horizontal
-				numNeighbours += 1
-			}
-			if world[xForward][y] == 255 {
-				numNeighbours += 1
-			}
-			if world[x][yUp] == 255 { //Vertical
-				numNeighbours += 1
-			}
-			if world[x][yDown] == 255 {
-				numNeighbours += 1
-			}
-			if world[xBack][yDown] == 255 { //Diagonal
-				numNeighbours += 1
-			}
-			if world[xForward][yUp] == 255 {
-				numNeighbours += 1
-			}
-			if world[xBack][yUp] == 255 {
-				numNeighbours += 1
-			}
-			if world[xForward][yDown] == 255 {
-				numNeighbours += 1
-			}
-			if numNeighbours == 2 && world[x][y] == 255 || numNeighbours == 3 {
-				newWorld[x][y] = 255
-			} else {
-				newWorld[x][y] = 0
-			}
-		}
-	}
-	return newWorld
-}
 
 type GameOfLife struct{}
 
@@ -102,18 +47,12 @@ func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (er
 	res.Turn = turn
 	res.World = world
 	res.AliveCellsCount = aliveCount
-	//fmt.Println("Test 2")
 	return
 }
 
 func (s *GameOfLife) Key(req stubs.KeyRequest, res *stubs.KeyResponse) (err error) {
-	//fmt.Println("Test 1")
 	world := BigWorld
 	turn := BigTurn
-	//if req.Key == 's' {
-	//	res.World = world
-	//	res.Turn = turn
-	//}
 	if req.Key == 'p' {
 		if Pause == "Continue" {
 			Pause = "Pause"
@@ -124,18 +63,15 @@ func (s *GameOfLife) Key(req stubs.KeyRequest, res *stubs.KeyResponse) (err erro
 		}
 		res.Pause = Pause
 	}
-	if req.Key == 'q' {
+	if req.Key == 'q' || req.Key == 'k' {
 		Quit = "Yes"
 		res.Pause = "Quit"
 	}
 	if req.Key == 'k' {
-		Quit = "Yes"
-		res.Pause = "Quit"
 		Close = "yes"
 	}
 	res.Turn = turn
 	res.World = world
-	//fmt.Println("Test 2")
 	return
 }
 
@@ -146,13 +82,19 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 	world := req.World
 	BigTurn = 0
 	aliveCells := []util.Cell{}
-	//server := "127.0.0.1:8040"
-	//server := "3.90.140.42:8030"
-	//client, _ := rpc.Dial("tcp", server)
+	client, _ := rpc.Dial("tcp", req.WorkerAddress)
 	for turn := 0; turn < req.Turn; turn++ {
 		if Pause == "Pause" {
 			for Pause == "Pause" {
 				time.Sleep(1 * time.Second)
+			}
+		}
+		if Close == "yes" {
+			request := stubs.WorkerRequest{World: world, ImageHeight: req.ImageHeight, ImageWidth: req.ImageWidth, Quit: "yes"}
+			response := new(stubs.WorkerResponse)
+			err := client.Call(stubs.Worker, request, response)
+			if err != nil {
+				return err
 			}
 		}
 		if Quit == "Yes" {
@@ -168,19 +110,17 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 			}
 			fmt.Println("Quit 2")
 			res.AliveCells = aliveCells
+			res.Turn = turn
 			return
 		}
 		BigTurn = turn
-		out := make(chan [][]byte)
-		//request := stubs.WorkerRequest{World: world, ImageHeight: req.ImageHeight, ImageWidth: req.ImageWidth}
-		//response := new(stubs.WorkerResponse)
-		//client.Call(stubs.Worker, request, response)
-		newWorld := makeWorld(0, 0) // Rebuilds world from sections
-		newWorld = worker(world, out, req.ImageHeight, req.ImageWidth)
-		//world = response.World
-		//section := <-out
-		//newWorld = append(newWorld, section...)
-		world = newWorld
+		request := stubs.WorkerRequest{World: world, ImageHeight: req.ImageHeight, ImageWidth: req.ImageWidth, Quit: "No"}
+		response := new(stubs.WorkerResponse)
+		err := client.Call(stubs.Worker, request, response)
+		if err != nil {
+			return err
+		}
+		world = response.World
 		BigWorld = world
 	}
 	res.World = BigWorld
@@ -193,15 +133,13 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 		}
 	}
 	res.AliveCells = aliveCells
-
-	//c.events <- TurnComplete{Turn}
+	res.Turn = BigTurn
 	return
 }
 func main() {
 	//pAddr := flag.String("port", "8030", "Port to listen on")
 	//flag.Parse()
 	pAddr := "8030"
-	//pAddr2 := "8031"
 	rand.Seed(time.Now().UnixNano())
 	err := rpc.Register(&GameOfLife{})
 	if err != nil {
@@ -217,15 +155,15 @@ func main() {
 	go func() {
 		for {
 			if Close == "yes" {
+				//time.Sleep(1 * time.Second)
 				fmt.Println("Quitting")
-				listener.Close()
+				err := listener.Close()
+				if err != nil {
+					return
+				}
 				os.Exit(0)
 			}
 		}
 	}()
 	rpc.Accept(listener)
-
-	//listener2, _ := net.Listen("tcp", ":"+pAddr2)
-	//defer listener2.Close()
-	//rpc.Accept(listener2)
 }

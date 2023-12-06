@@ -1,12 +1,16 @@
-package stubs
+package main
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
+	"os"
 	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
 )
+
+var Quit = "no"
 
 type Worker struct{}
 
@@ -19,6 +23,12 @@ func makeWorld(height int, width int) [][]byte {
 }
 
 func (s *Worker) Worker(req stubs.WorkerRequest, res *stubs.WorkerResponse) (err error) {
+	if req.Quit == "yes" {
+		//allows the distributed element to be of the worker to be shutdown on request
+		res.World = req.World
+		Quit = "yes"
+	}
+	//implements GameOfLife to the provided world and outputs a new world
 	newWorld := makeWorld(req.ImageHeight, req.ImageWidth)
 	for x := 0; x < req.ImageWidth; x++ {
 		for y := 0; y < req.ImageHeight; y++ {
@@ -75,19 +85,30 @@ func (s *Worker) Worker(req stubs.WorkerRequest, res *stubs.WorkerResponse) (err
 }
 
 func main() {
-	pAddr := "8031"
+	pAddr := "8040"
 	rand.Seed(time.Now().UnixNano())
 	err := rpc.Register(&Worker{})
 	if err != nil {
 		return
 	}
 	listener, _ := net.Listen("tcp", ":"+pAddr)
-	//fmt.Println("Test 4")
 	defer func(listener net.Listener) {
 		err := listener.Close()
 		if err != nil {
 
 		}
 	}(listener)
+	go func() {
+		for {
+			if Quit == "yes" {
+				fmt.Println("Quitting")
+				err := listener.Close()
+				if err != nil {
+					return
+				}
+				os.Exit(0)
+			}
+		}
+	}()
 	rpc.Accept(listener)
 }

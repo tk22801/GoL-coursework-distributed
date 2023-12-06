@@ -12,14 +12,15 @@ var Worker = "Worker.Worker"
 type Response struct {
 	World      [][]byte
 	AliveCells []util.Cell
+	Turn       int
 }
 
 type Request struct {
-	World       [][]byte
-	Turn        int
-	ImageHeight int
-	ImageWidth  int
-	//WorkerAddress string
+	World         [][]byte
+	Turn          int
+	ImageHeight   int
+	ImageWidth    int
+	WorkerAddress string
 }
 type AliveRequest struct {
 	ImageHeight int
@@ -43,6 +44,7 @@ type WorkerRequest struct {
 	World       [][]byte
 	ImageHeight int
 	ImageWidth  int
+	Quit        string
 }
 
 type WorkerResponse struct {
