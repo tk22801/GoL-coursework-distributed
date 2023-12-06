@@ -1,7 +1,6 @@
 package stubs
 
 import (
-	"net/rpc"
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
@@ -16,11 +15,11 @@ type Response struct {
 }
 
 type Request struct {
-	World         [][]byte
-	Turn          int
-	ImageHeight   int
-	ImageWidth    int
-	WorkerAddress *rpc.Client
+	World       [][]byte
+	Turn        int
+	ImageHeight int
+	ImageWidth  int
+	//WorkerAddress string
 }
 type AliveRequest struct {
 	ImageHeight int

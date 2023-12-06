@@ -66,16 +66,6 @@ func makeAliveCall(client *rpc.Client, height int, width int, c distributorChann
 	}
 	//fmt.Println("test 3")
 	c.events <- AliveCellsCount{response.Turn, response.AliveCellsCount}
-	//fmt.Println("Alive cells: ", response.AliveCellsCount)
-	//c.ioCommand <- ioOutput
-	//filename := fmt.Sprintf("%dx%dx%d", width, height, turn)
-	//c.ioFilename <- filename
-	//for i := 0; i < height; i++ {
-	//	for j := 0; j < width; j++ {
-	//		c.ioOutput <- response.World[i][j]
-	//	}
-	//}
-	//c.events <- ImageOutputComplete{turn, filename}
 }
 func makeKeyCall(client *rpc.Client, key rune, height int, width int, c distributorChannels) {
 	request := stubs.KeyRequest{Key: key}
@@ -111,7 +101,8 @@ func makeKeyCall(client *rpc.Client, key rune, height int, width int, c distribu
 		<-c.ioIdle
 		c.events <- StateChange{response.Turn, Quitting}
 		// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
-		close(c.events)
+		//close(c.events)
+		//os.Exit(0)
 	}
 }
 
@@ -157,7 +148,7 @@ func distributor(p Params, c distributorChannels) {
 		}
 	}()
 	//makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
-	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, ticker)
+	makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c)
 	ticker.Stop()
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
