@@ -7,7 +7,8 @@ import (
 var GoLWorker = "GameOfLife.GoL"
 var AliveWorker = "GameOfLife.Alive"
 var KeyPresses = "GameOfLife.Key"
-var Worker = "Worker.Worker"
+
+//var Worker = "Worker.Worker"
 
 type Response struct {
 	World      [][]byte
@@ -16,11 +17,11 @@ type Response struct {
 }
 
 type Request struct {
-	World         [][]byte
-	Turn          int
-	ImageHeight   int
-	ImageWidth    int
-	WorkerAddress string
+	World       [][]byte
+	Turn        int
+	ImageHeight int
+	ImageWidth  int
+	//WorkerAddress string
 }
 type AliveRequest struct {
 	ImageHeight int
