@@ -96,7 +96,6 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 			}
 		}
 		if Quit == "Yes" {
-			res.World = BigWorld
 			for i := 0; i < req.ImageHeight; i++ {
 				for j := 0; j < req.ImageWidth; j++ {
 					if BigWorld[i][j] == 255 {
@@ -105,6 +104,7 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 					}
 				}
 			}
+			res.World = BigWorld
 			res.AliveCells = aliveCells
 			res.Turn = turn
 			return
@@ -151,7 +151,7 @@ func main() {
 	go func() {
 		for {
 			if Close == "yes" {
-				//time.Sleep(1 * time.Second)
+				time.Sleep(1 * time.Second)
 				fmt.Println("Quitting")
 				err := listener.Close()
 				if err != nil {
