@@ -85,7 +85,7 @@ func (s *Worker) Worker(req stubs.WorkerRequest, res *stubs.WorkerResponse) (err
 }
 
 func main() {
-	pAddr := "8030"
+	pAddr := "8040"
 	rand.Seed(time.Now().UnixNano())
 	err := rpc.Register(&Worker{})
 	if err != nil {

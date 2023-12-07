@@ -135,21 +135,21 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 	world := req.World
 	BigTurn = 0
 	aliveCells := []util.Cell{}
-	//client, _ := rpc.Dial("tcp", req.WorkerAddress)
+	client, _ := rpc.Dial("tcp", req.WorkerAddress)
 	for turn := 0; turn < req.Turn; turn++ {
 		if Pause == "Pause" {
 			for Pause == "Pause" {
 				time.Sleep(1 * time.Second)
 			}
 		}
-		//if Close == "yes" {
-		//	//request := stubs.WorkerRequest{World: world, ImageHeight: req.ImageHeight, ImageWidth: req.ImageWidth, Quit: "yes"}
-		//	//response := new(stubs.WorkerResponse)
-		//	//err := client.Call(stubs.Worker, request, response)
-		//	//if err != nil {
-		//	//	return err
-		//	//}
-		//}
+		if Close == "yes" {
+			request := stubs.WorkerRequest{World: world, ImageHeight: req.ImageHeight, ImageWidth: req.ImageWidth, Quit: "yes"}
+			response := new(stubs.WorkerResponse)
+			err := client.Call(stubs.Worker, request, response)
+			if err != nil {
+				return err
+			}
+		}
 		if Quit == "Yes" {
 			for i := 0; i < req.ImageHeight; i++ {
 				for j := 0; j < req.ImageWidth; j++ {
@@ -186,7 +186,7 @@ func (s *GameOfLife) GoL(req stubs.Request, res *stubs.Response) (err error) {
 func main() {
 	//pAddr := flag.String("port", "8030", "Port to listen on")
 	//flag.Parse()
-	pAddr := "8040"
+	pAddr := "8030"
 	rand.Seed(time.Now().UnixNano())
 	err := rpc.Register(&GameOfLife{})
 	if err != nil {
