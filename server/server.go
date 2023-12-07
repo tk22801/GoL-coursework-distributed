@@ -151,7 +151,7 @@ func main() {
 	go func() {
 		for {
 			if Close == "yes" {
-				//time.Sleep(1 * time.Second)
+				time.Sleep(1 * time.Second)
 				fmt.Println("Quitting")
 				err := listener.Close()
 				if err != nil {
