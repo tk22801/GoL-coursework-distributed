@@ -5,7 +5,6 @@ import (
 	"net/rpc"
 	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
-	"uk.ac.bris.cs/gameoflife/util"
 )
 
 type distributorChannels struct {
@@ -49,7 +48,7 @@ func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width in
 	return response.Turn
 }
 
-//Makes a call to the Alive function to
+//Makes a call to the Alive function
 func makeAliveCall(client *rpc.Client, height int, width int, c distributorChannels) {
 	request := stubs.AliveRequest{ImageHeight: height, ImageWidth: width}
 	response := new(stubs.AliveResponse)
@@ -59,6 +58,8 @@ func makeAliveCall(client *rpc.Client, height int, width int, c distributorChann
 	}
 	c.events <- AliveCellsCount{response.Turn, response.AliveCellsCount}
 }
+
+//Makes a call to the KeyPresses function
 func makeKeyCall(client *rpc.Client, key rune, height int, width int, c distributorChannels) {
 	request := stubs.KeyRequest{Key: key}
 	response := new(stubs.KeyResponse)
@@ -109,7 +110,7 @@ func distributor(p Params, c distributorChannels) {
 	fmt.Println("Ip address of AWS Node and gate(IpAddress:gate):")
 	fmt.Scan(&workerServer)
 	server := "127.0.0.1:8030"
-	//workerServer := "127.0.0.1:8040"
+	//workerServer := "3.85.89.162:8040"
 	//server := "3.85.6.20:8030"
 	//workerServer := "3.85.6.20:8040"
 	client, _ := rpc.Dial("tcp", server)
@@ -119,16 +120,12 @@ func distributor(p Params, c distributorChannels) {
 
 		}
 	}(client)
-	turn := 0
 	//Make world and fills it with the input values
 	world := makeWorld(p.ImageHeight, p.ImageWidth)
 	for x := 0; x < p.ImageHeight; x++ {
 		for y := 0; y < p.ImageWidth; y++ {
 			val := <-c.ioInput
 			world[x][y] = val
-			if val == 255 {
-				c.events <- CellFlipped{CompletedTurns: turn, Cell: util.Cell{x, y}}
-			}
 		}
 	}
 	ticker := time.NewTicker(2 * time.Second)

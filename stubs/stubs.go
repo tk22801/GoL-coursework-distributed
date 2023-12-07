@@ -27,7 +27,6 @@ type AliveRequest struct {
 	ImageWidth  int
 }
 type AliveResponse struct {
-	World           [][]byte
 	Turn            int
 	AliveCellsCount int
 }

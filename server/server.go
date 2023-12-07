@@ -28,7 +28,6 @@ func makeWorld(height int, width int) [][]byte {
 type GameOfLife struct{}
 
 func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (err error) {
-	//fmt.Println("Test 1")
 	if Pause == "Pause" {
 		for Pause == "Pause" {
 			time.Sleep(1 * time.Second)
@@ -45,7 +44,6 @@ func (s *GameOfLife) Alive(req stubs.AliveRequest, res *stubs.AliveResponse) (er
 		}
 	}
 	res.Turn = turn
-	res.World = world
 	res.AliveCellsCount = aliveCount
 	return
 }
