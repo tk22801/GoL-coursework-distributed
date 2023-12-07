@@ -27,8 +27,8 @@ func makeWorld(height, width int) [][]byte {
 }
 
 //Makes the call to the server calling the GoL function
-func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels, workerAddress string) int {
-	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width, WorkerAddress: workerAddress}
+func makeCall(client *rpc.Client, world [][]byte, turn int, height int, width int, c distributorChannels) int {
+	request := stubs.Request{World: world, Turn: turn, ImageHeight: height, ImageWidth: width}
 	response := new(stubs.Response)
 	err := client.Call(stubs.GoLWorker, request, response)
 	if err != nil {
@@ -106,10 +106,10 @@ func distributor(p Params, c distributorChannels) {
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
 	//asks the user for the Ip Address and gate of the AWS instance since the IP address changes when the instance is restarted
-	workerServer := ""
-	fmt.Println("Ip address of AWS Node and gate(IpAddress:gate):")
-	fmt.Scan(&workerServer)
-	server := "127.0.0.1:8030"
+	//workerServer := ""
+	//fmt.Println("Ip address of AWS Node and gate(IpAddress:gate):")
+	//fmt.Scan(&workerServer)
+	server := "3.85.89.162:8040"
 	//workerServer := "3.85.89.162:8040"
 	//server := "3.85.6.20:8030"
 	//workerServer := "3.85.6.20:8040"
@@ -144,7 +144,7 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 	}()
-	lastTurn := makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c, workerServer)
+	lastTurn := makeCall(client, world, p.Turns, p.ImageHeight, p.ImageWidth, c)
 	ticker.Stop()
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
